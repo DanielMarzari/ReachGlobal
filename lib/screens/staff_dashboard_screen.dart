@@ -421,8 +421,11 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => context.go(AppRoutes.login),
             tooltip: "Logout",
+            onPressed: () async {
+              await context.read<AuthService>().signOut();
+              if (context.mounted) context.go(AppRoutes.login);
+            },
           ),
         ],
       ),

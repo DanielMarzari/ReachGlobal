@@ -53,9 +53,15 @@ extension UserRoleX on UserRole {
 class AuthService extends ChangeNotifier {
   AuthService() {
     // Listen to Supabase auth changes and refresh state.
-    SupabaseService.authStateStream.listen((event) {
+    // We await _loadProfile() before notifying so the router guard
+    // never sees a null profile for an authenticated user.
+    SupabaseService.authStateStream.listen((event) async {
       _user = event.session?.user;
-      _loadProfile();
+      if (_user != null) {
+        await _loadProfile();
+      } else {
+        _profile = null;
+      }
       notifyListeners();
     });
     _user = SupabaseService.currentUser;

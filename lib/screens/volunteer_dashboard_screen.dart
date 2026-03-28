@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
 import '../theme.dart';
 import '../nav.dart';
 
@@ -266,11 +268,19 @@ class VolunteerDashboardScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Volunteer Dashboard"),
+        leading: IconButton(
+          icon: const Icon(Icons.home_outlined),
+          tooltip: "Public Home",
+          onPressed: () => context.go(AppRoutes.home),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => context.go(AppRoutes.login),
             tooltip: "Logout",
+            onPressed: () async {
+              await context.read<AuthService>().signOut();
+              if (context.mounted) context.go(AppRoutes.login);
+            },
           ),
         ],
       ),
