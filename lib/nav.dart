@@ -31,6 +31,7 @@ import 'screens/materials_inventory_screen.dart';
 import 'screens/financial_management_screen.dart';
 import 'screens/reports_screen.dart';
 import 'screens/event_management_screen.dart';
+import 'screens/add_staff_screen.dart';
 // Shared
 import 'screens/gantt_chart_page.dart';
 
@@ -63,6 +64,7 @@ class AppRoutes {
   static const String staffFinancial     = '/staff/financial';
   static const String staffReports       = '/staff/reports';
   static const String staffEvent         = '/staff/event';
+  static const String addStaff           = '/staff/add-staff';
   // Shared
   static const String ganttChart         = '/gantt';
 }
@@ -269,6 +271,12 @@ class AppRouter {
       name: 'staffEvent',
       pageBuilder: (c, s) =>
           const MaterialPage(child: EventManagementScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.addStaff,
+      name: 'addStaff',
+      pageBuilder: (c, s) =>
+          const MaterialPage(child: AddStaffScreen()),
     ),
 
     // ── Shared ─────────────────────────────────────────────────────────────

@@ -87,9 +87,16 @@ class AuthService extends ChangeNotifier {
 
   /// Where to route after login based on role.
   String get homeRoute {
-    if (isStaff) return '/staff';
-    if (isChurchCoordinator) return '/church';
-    return '/volunteer';
+    if (!isAuthenticated) return '/login';
+    switch (role) {
+      case UserRole.superAdmin:
+      case UserRole.coordinator:
+        return '/staff';
+      case UserRole.churchCoordinator:
+        return '/church';
+      default:
+        return '/volunteer';
+    }
   }
 
   // ── Auth operations ───────────────────────────────────────────────────────
@@ -99,6 +106,11 @@ class AuthService extends ChangeNotifier {
       email: email,
       password: password,
     );
+    // Wait for profile to load after sign-in to ensure role is available
+    await Future.delayed(const Duration(milliseconds: 500));
+    while (_profileLoading) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
   }
 
   Future<void> signUp({

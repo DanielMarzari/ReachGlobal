@@ -3,6 +3,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:go_router/go_router.dart';
 import '../theme.dart';
 import '../nav.dart';
+import '../services/supabase_service.dart';
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
 
 class UrgentFlag extends StatelessWidget {
   final String label;
@@ -96,21 +99,23 @@ class StaffStatCard extends StatelessWidget {
 class EventSummaryCard extends StatelessWidget {
   final String title;
   final String location;
-  final String imgDesc;
+  final String? imgDesc;
   final String status;
   final String progress;
   final double progressDecimal;
   final bool isUrgent;
+  final String? disasterId;
 
   const EventSummaryCard({
     super.key,
     required this.title,
     required this.location,
-    required this.imgDesc,
+    this.imgDesc,
     required this.status,
     required this.progress,
     required this.progressDecimal,
     required this.isUrgent,
+    this.disasterId,
   });
 
   @override
@@ -138,10 +143,22 @@ class EventSummaryCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Image.asset(
-                  imgDesc,
-                  fit: BoxFit.cover,
-                ),
+                if (imgDesc != null)
+                  Image.asset(
+                    imgDesc!,
+                    fit: BoxFit.cover,
+                  )
+                else
+                  Container(
+                    color: Theme.of(context).colorScheme.surface,
+                    child: Center(
+                      child: Icon(
+                        Icons.disaster_rounded,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 48,
+                      ),
+                    ),
+                  ),
                 Positioned(
                   top: 0,
                   right: 0,
@@ -278,7 +295,9 @@ class EventSummaryCard extends StatelessWidget {
                       ),
                     ),
                     FilledButton.tonalIcon(
-                      onPressed: () => context.push(AppRoutes.projectDetailStaff),
+                      onPressed: disasterId != null
+                          ? () => context.push(AppRoutes.projectDetailStaff, extra: {'id': disasterId, 'name': title})
+                          : null,
                       icon: const Icon(Icons.arrow_forward_rounded, size: 18),
                       label: const Text("Manage Event"),
                       style: FilledButton.styleFrom(
@@ -300,55 +319,99 @@ class EventSummaryCard extends StatelessWidget {
 class QuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
+  final VoidCallback? onTap;
 
   const QuickAction({
     super.key,
     required this.icon,
     required this.label,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Container(
-        padding: AppSpacing.paddingMd,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: Theme.of(context).dividerColor),
-        ),
-        alignment: Alignment.center,
-        child: Column(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                shape: BoxShape.circle,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: AppSpacing.paddingMd,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: Theme.of(context).dividerColor),
+          ),
+          alignment: Alignment.center,
+          child: Column(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  icon,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 24,
+                ),
               ),
-              alignment: Alignment.center,
-              child: Icon(
-                icon,
-                color: Theme.of(context).colorScheme.primary,
-                size: 24,
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                label,
+                style: context.textStyles.labelSmall?.semiBold,
+                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              label,
-              style: context.textStyles.labelSmall?.semiBold,
-              textAlign: TextAlign.center,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class StaffDashboardScreen extends StatelessWidget {
+class StaffDashboardScreen extends StatefulWidget {
   const StaffDashboardScreen({super.key});
+
+  @override
+  State<StaffDashboardScreen> createState() => _StaffDashboardScreenState();
+}
+
+class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
+  List<Map<String, dynamic>> _disasters = [];
+  bool _loadingDisasters = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDisasters();
+  }
+
+  Future<void> _loadDisasters() async {
+    try {
+      final auth = context.read<AuthService>();
+      List<dynamic> data;
+      if (auth.isSuperAdmin) {
+        // Super admin sees all active disasters
+        data = await SupabaseService.client
+            .from('disasters')
+            .select('id, name, type, location_name, status, image_url')
+            .eq('status', 'active')
+            .order('created_at', ascending: false);
+      } else {
+        // Coordinator sees only assigned disasters
+        data = await SupabaseService.client
+            .from('disasters')
+            .select('id, name, type, location_name, status, image_url, staff_event_permissions!inner(user_id)')
+            .eq('status', 'active')
+            .eq('staff_event_permissions.user_id', SupabaseService.currentUser?.id ?? '');
+      }
+      if (mounted) setState(() { _disasters = List<Map<String, dynamic>>.from(data); _loadingDisasters = false; });
+    } catch (e) {
+      if (mounted) setState(() => _loadingDisasters = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -440,21 +503,24 @@ class StaffDashboardScreen extends StatelessWidget {
                       style: context.textStyles.titleMedium?.bold,
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    const Row(
+                    Row(
                       children: [
                         QuickAction(
                           icon: Icons.add_location_alt_rounded,
-                          label: "New Event",
+                          label: "Create Response",
+                          onTap: () => context.push(AppRoutes.staffEvent),
                         ),
-                        SizedBox(width: AppSpacing.md),
+                        const SizedBox(width: AppSpacing.md),
                         QuickAction(
                           icon: Icons.person_add_rounded,
-                          label: "Deploy Team",
+                          label: "Add Staff",
+                          onTap: () => context.push('/staff/add-staff'),
                         ),
-                        SizedBox(width: AppSpacing.md),
+                        const SizedBox(width: AppSpacing.md),
                         QuickAction(
                           icon: Icons.inventory_2_rounded,
                           label: "Log Supplies",
+                          onTap: () => context.push(AppRoutes.staffMaterials),
                         ),
                       ],
                     ),
@@ -470,7 +536,7 @@ class StaffDashboardScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          "Active Disaster Events",
+                          "Active Responses",
                           style: context.textStyles.titleMedium?.bold,
                         ),
                         TextButton(
@@ -483,33 +549,32 @@ class StaffDashboardScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    const EventSummaryCard(
-                      title: "Hurricane Idalia Recovery",
-                      location: "Perry, Florida",
-                      imgDesc: "assets/images/flooded_street_with_fallen_trees_gray_1774661720119.jpg",
-                      status: "DEPLOYED",
-                      progress: "64",
-                      progressDecimal: 0.64,
-                      isUrgent: true,
-                    ),
-                    const EventSummaryCard(
-                      title: "Rolling Fork Tornado",
-                      location: "Sharkey County, MS",
-                      imgDesc: "assets/images/destroyed_wooden_house_debris_gray_1774661720710.jpg",
-                      status: "STABILIZING",
-                      progress: "38",
-                      progressDecimal: 0.38,
-                      isUrgent: false,
-                    ),
-                    const EventSummaryCard(
-                      title: "Maui Wildfire Relief",
-                      location: "Lahaina, Hawaii",
-                      imgDesc: "assets/images/burnt_landscape_with_palm_trees_gray_1774661721154.jpg",
-                      status: "ASSESSING",
-                      progress: "12",
-                      progressDecimal: 0.12,
-                      isUrgent: true,
-                    ),
+                    if (_loadingDisasters)
+                      const Center(child: Padding(
+                        padding: EdgeInsets.all(AppSpacing.xl),
+                        child: CircularProgressIndicator(),
+                      ))
+                    else if (_disasters.isEmpty)
+                      Container(
+                        padding: AppSpacing.paddingLg,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                          border: Border.all(color: Theme.of(context).dividerColor),
+                        ),
+                        child: Center(child: Text('No active responses.', style: context.textStyles.bodyMedium)),
+                      )
+                    else
+                      ...(_disasters.map((d) => EventSummaryCard(
+                        title: d['name'] as String,
+                        location: d['location_name'] as String,
+                        imgDesc: null,
+                        status: (d['status'] as String).toUpperCase(),
+                        progress: '—',
+                        progressDecimal: 0.0,
+                        isUrgent: false,
+                        disasterId: d['id'] as String,
+                      )).toList()),
                   ],
                 ),
               ),
