@@ -34,6 +34,7 @@ import 'screens/event_management_screen.dart';
 import 'screens/add_staff_screen.dart';
 // Shared
 import 'screens/gantt_chart_page.dart';
+import 'screens/response_setup_screen.dart';
 
 // ── Route constants ───────────────────────────────────────────────────────────
 class AppRoutes {
@@ -65,6 +66,7 @@ class AppRoutes {
   static const String staffReports       = '/staff/reports';
   static const String staffEvent         = '/staff/event';
   static const String addStaff           = '/staff/add-staff';
+  static const String responseSetup      = '/staff/response-setup';
   // Shared
   static const String ganttChart         = '/gantt';
 }
@@ -292,6 +294,19 @@ class AppRouter {
       name: 'addStaff',
       pageBuilder: (c, s) =>
           const MaterialPage(child: AddStaffScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.responseSetup,
+      name: 'responseSetup',
+      pageBuilder: (c, s) {
+        final extra = s.extra as Map<String, dynamic>? ?? {};
+        return MaterialPage(
+          child: ResponseSetupScreen(
+            disasterId:   extra['disasterId']   as String? ?? '',
+            disasterName: extra['disasterName'] as String? ?? 'Response',
+          ),
+        );
+      },
     ),
 
     // ── Shared ─────────────────────────────────────────────────────────────

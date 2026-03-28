@@ -25,6 +25,8 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
       TextEditingController();
   final TextEditingController _descriptionController =
       TextEditingController();
+  final TextEditingController _coverImageController =
+      TextEditingController();
 
   String _selectedDisasterType = 'tornado';
   DateTime? _selectedStartDate;
@@ -55,6 +57,7 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
     _locationController.dispose();
     _baseCampController.dispose();
     _descriptionController.dispose();
+    _coverImageController.dispose();
     super.dispose();
   }
 
@@ -129,7 +132,8 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
     setState(() => _isSaving = true);
     try {
       final userId = context.read<AuthService>().userId;
-      await SupabaseService.client.from('disasters').insert({
+      final coverUrl = _coverImageController.text.trim();
+      final result = await SupabaseService.client.from('disasters').insert({
         'name': _eventNameController.text.trim(),
         'type': _selectedDisasterType,
         'location_name': _locationController.text.trim(),
@@ -139,12 +143,16 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
         'public_visible': _isPublic,
         'status': _selectedStatus,
         'created_by': userId,
-      });
+        if (coverUrl.isNotEmpty) 'cover_image_url': coverUrl,
+      }).select('id, name').single();
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Response created successfully.')),
-        );
-        context.go(AppRoutes.staffDashboard);
+        // Navigate into the setup wizard so staff can document the site,
+        // select work phases, and measure rooms before coordinating resources.
+        context.go(AppRoutes.responseSetup, extra: {
+          'disasterId': result['id'] as String,
+          'disasterName': result['name'] as String,
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -432,6 +440,29 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
                     });
                   }
                 },
+              ),
+              SizedBox(height: AppSpacing.lg),
+              // Cover Image URL (optional — can also be set during Response Setup)
+              Text(
+                'Cover Image URL (optional)',
+                style: context.textStyles.labelSmall?.bold,
+              ),
+              SizedBox(height: AppSpacing.sm),
+              TextFormField(
+                controller: _coverImageController,
+                decoration: InputDecoration(
+                  hintText: 'https://...',
+                  prefixIcon: const Icon(Icons.image_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                  helperText: 'Leave blank — you can add site photos in the next step.',
+                ),
+                keyboardType: TextInputType.url,
               ),
               SizedBox(height: AppSpacing.xl),
               // Save button

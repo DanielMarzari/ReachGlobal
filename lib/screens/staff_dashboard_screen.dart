@@ -100,6 +100,7 @@ class EventSummaryCard extends StatelessWidget {
   final String title;
   final String location;
   final String? imgDesc;
+  final String? coverImageUrl;
   final String status;
   final String progress;
   final double progressDecimal;
@@ -111,6 +112,7 @@ class EventSummaryCard extends StatelessWidget {
     required this.title,
     required this.location,
     this.imgDesc,
+    this.coverImageUrl,
     required this.status,
     required this.progress,
     required this.progressDecimal,
@@ -120,7 +122,13 @@ class EventSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return InkWell(
+      onTap: disasterId != null
+          ? () => context.push(AppRoutes.responseSetup,
+              extra: {'disasterId': disasterId, 'disasterName': title})
+          : null,
+      borderRadius: BorderRadius.circular(AppRadius.xl),
+      child: Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.lg),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
@@ -143,22 +151,16 @@ class EventSummaryCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                if (imgDesc != null)
-                  Image.asset(
-                    imgDesc!,
+                if (coverImageUrl != null && coverImageUrl!.isNotEmpty)
+                  Image.network(
+                    coverImageUrl!,
                     fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _imagePlaceholder(context),
                   )
+                else if (imgDesc != null)
+                  Image.asset(imgDesc!, fit: BoxFit.cover)
                 else
-                  Container(
-                    color: Theme.of(context).colorScheme.surface,
-                    child: Center(
-                      child: Icon(
-                        Icons.report_problem_rounded,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 48,
-                      ),
-                    ),
-                  ),
+                  _imagePlaceholder(context),
                 Positioned(
                   top: 0,
                   right: 0,
@@ -312,6 +314,19 @@ class EventSummaryCard extends StatelessWidget {
           ),
         ],
       ),
+    )); // InkWell + Container
+  }
+
+  Widget _imagePlaceholder(BuildContext context) {
+    return Container(
+      color: Theme.of(context).colorScheme.surface,
+      child: Center(
+        child: Icon(
+          Icons.report_problem_rounded,
+          color: Theme.of(context).colorScheme.primary,
+          size: 48,
+        ),
+      ),
     );
   }
 }
@@ -396,14 +411,14 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
         // Super admin sees all active disasters
         data = await SupabaseService.client
             .from('disasters')
-            .select('id, name, type, location_name, status, image_url')
+            .select('id, name, type, location_name, status, cover_image_url')
             .eq('status', 'active')
             .order('created_at', ascending: false);
       } else {
         // Coordinator sees only assigned disasters
         data = await SupabaseService.client
             .from('disasters')
-            .select('id, name, type, location_name, status, image_url, staff_event_permissions!inner(user_id)')
+            .select('id, name, type, location_name, status, cover_image_url, staff_event_permissions!inner(user_id)')
             .eq('status', 'active')
             .eq('staff_event_permissions.user_id', SupabaseService.currentUser?.id ?? '');
       }
@@ -568,6 +583,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                       ...(_disasters.map((d) => EventSummaryCard(
                         title: d['name'] as String,
                         location: d['location_name'] as String,
+                        coverImageUrl: d['cover_image_url'] as String?,
                         imgDesc: null,
                         status: (d['status'] as String).toUpperCase(),
                         progress: '—',
