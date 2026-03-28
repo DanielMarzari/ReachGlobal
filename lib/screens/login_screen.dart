@@ -68,9 +68,11 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     setState(() => _isLoading = true);
     try {
-      final auth = context.read<AuthService>();
-      await auth.signIn(email, password);
-      if (mounted) context.go(auth.homeRoute);
+      await context.read<AuthService>().signIn(email, password);
+      // signIn() calls notifyListeners() after loading the profile, so
+      // go_router's refreshListenable guard fires and routes correctly.
+      // No explicit context.go() needed — and it avoids a double-nav race.
+      if (mounted) setState(() => _isLoading = false);
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);

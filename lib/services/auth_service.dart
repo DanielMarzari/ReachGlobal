@@ -127,7 +127,9 @@ class AuthService extends ChangeNotifier {
           .eq('id', _user!.id)
           .maybeSingle();
     }
-    // notifyListeners() will be called by the stream listener.
+    // Notify now with the fully-loaded profile so the router guard fires once,
+    // correctly, rather than relying on the async stream listener.
+    notifyListeners();
   }
 
   Future<void> signUp({
