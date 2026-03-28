@@ -1,42 +1,57 @@
 #!/bin/bash
 # ============================================================
-# ReachGlobal — Deploy Supabase Schema
+# ReachGlobal — Deploy Supabase Schema via Management API
 # ============================================================
 # Usage:
-#   bash scripts/deploy_schema.sh <DB_URL>
+#   bash scripts/deploy_schema.sh [migration_file]
 #
-# Where DB_URL is your Supabase direct connection string, e.g.:
-#   postgresql://postgres.[project-id]:[password]@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+# Requires: SUPABASE_PAT and SUPABASE_PROJECT_ID env vars.
+# Source them with:
+#   source /sessions/nice-busy-cerf/.supabase.env
 #
-# Find it in: Supabase Dashboard → Project Settings → Database → Connection string
-#
-# Alternatively, run each migration file manually in:
-#   Supabase Dashboard → SQL Editor → New query → paste & run
-#
-# Order matters: run 001, then 002, then 003.
+# Runs all migrations in order if no file is specified,
+# or a single migration file if provided.
 # ============================================================
 
 set -e
 
-DB_URL="${1:-}"
+PROJECT_ID="${SUPABASE_PROJECT_ID:-sqhpxtfnnupcdgjjhsgc}"
+PAT="${SUPABASE_PAT:-}"
+API="https://api.supabase.com/v1/projects/${PROJECT_ID}/database/query"
+MIGRATION_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../supabase/migrations" && pwd)"
 
-if [ -z "$DB_URL" ]; then
-  echo "Usage: bash scripts/deploy_schema.sh <DB_URL>"
-  echo ""
-  echo "Or run manually in Supabase SQL Editor:"
-  echo "  supabase/migrations/001_initial_schema.sql"
-  echo "  supabase/migrations/002_rls_policies.sql"
-  echo "  supabase/migrations/003_storage_buckets.sql"
+if [ -z "$PAT" ]; then
+  echo "ERROR: SUPABASE_PAT is not set."
+  echo "Run: source /sessions/nice-busy-cerf/.supabase.env"
   exit 1
 fi
 
-MIGRATION_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../supabase/migrations" && pwd)"
+run_migration() {
+  local file="$1"
+  echo ">>> Running $(basename "$file")..."
+  local HTTP
+  HTTP=$(curl -s -o /tmp/mig_resp.json -w "%{http_code}" \
+    -X POST "$API" \
+    -H "Authorization: Bearer $PAT" \
+    -H "Content-Type: application/json" \
+    -d "$(python3 -c "import json; print(json.dumps({'query': open('$file').read()}))")")
 
-for f in "$MIGRATION_DIR"/00*.sql; do
-  echo ">>> Running $(basename $f)..."
-  psql "$DB_URL" -f "$f"
-  echo ">>> Done: $(basename $f)"
-done
+  if [ "$HTTP" = "200" ] || [ "$HTTP" = "201" ]; then
+    echo "    OK (HTTP $HTTP)"
+  else
+    echo "    FAILED (HTTP $HTTP):"
+    cat /tmp/mig_resp.json
+    exit 1
+  fi
+}
+
+if [ -n "$1" ]; then
+  run_migration "$1"
+else
+  for f in "$MIGRATION_DIR"/00*.sql; do
+    run_migration "$f"
+  done
+fi
 
 echo ""
-echo "Schema deployed successfully."
+echo "All migrations complete."
