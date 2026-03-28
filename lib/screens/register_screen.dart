@@ -4,10 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../nav.dart';
 import '../theme.dart';
 
-extension TextStyleContext on BuildContext {
-  TextTheme get textStyles => Theme.of(this).textTheme;
-}
-
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
 

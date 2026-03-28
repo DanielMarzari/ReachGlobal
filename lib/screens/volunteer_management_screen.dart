@@ -279,7 +279,7 @@ class _VolunteerManagementScreenState extends State<VolunteerManagementScreen> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.pop(context);
+                    context.pop();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
@@ -287,7 +287,7 @@ class _VolunteerManagementScreenState extends State<VolunteerManagementScreen> {
                       ),
                     );
                   },
-                  icon: const Icon(Icons.add_assignment),
+                  icon: const Icon(Icons.assignment_add),
                   label: const Text('Assign to Project'),
                 ),
               ),
