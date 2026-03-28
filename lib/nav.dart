@@ -126,6 +126,16 @@ class AppRouter {
       return auth.homeRoute;
     }
 
+    // Staff/church user landed on the wrong portal (e.g., profile loaded late
+    // and they ended up on /volunteer). Redirect them to their correct home.
+    final isVolunteerRoute = loc.startsWith('/volunteer');
+    if (isLoggedIn && isVolunteerRoute && auth.isStaff) {
+      return AppRoutes.staffDashboard;
+    }
+    if (isLoggedIn && isVolunteerRoute && auth.isChurchCoordinator) {
+      return AppRoutes.churchDashboard;
+    }
+
     return null; // No redirect needed.
   }
 

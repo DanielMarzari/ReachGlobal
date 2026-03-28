@@ -94,6 +94,10 @@ class AuthService extends ChangeNotifier {
   /// Where to route after login based on role.
   String get homeRoute {
     if (!isAuthenticated) return '/login';
+    // If profile hasn't loaded yet, default safely to volunteer until it does.
+    // The stream listener will call notifyListeners() once the profile loads,
+    // and go_router will re-evaluate the guard with the correct role.
+    if (_profile == null) return '/volunteer';
     switch (role) {
       case UserRole.superAdmin:
       case UserRole.coordinator:
@@ -113,19 +117,17 @@ class AuthService extends ChangeNotifier {
       password: password,
     );
     _user = response.user;
-    // Query profile directly — bypasses the _profileLoading guard that can
-    // race with the auth stream listener and leave _profile null.
+    // Query profile directly — bypasses the _profileLoading guard that races
+    // with the auth stream listener. Errors propagate to the caller (login screen)
+    // so they surface as a SnackBar rather than silently defaulting to /volunteer.
     if (_user != null) {
-      try {
-        _profile = await SupabaseService.client
-            .from('profiles')
-            .select()
-            .eq('id', _user!.id)
-            .maybeSingle();
-      } catch (_) {}
+      _profile = await SupabaseService.client
+          .from('profiles')
+          .select()
+          .eq('id', _user!.id)
+          .maybeSingle();
     }
-    // notifyListeners() will be called by the stream listener — that's fine
-    // since _profile is already set by the time it fires.
+    // notifyListeners() will be called by the stream listener.
   }
 
   Future<void> signUp({
