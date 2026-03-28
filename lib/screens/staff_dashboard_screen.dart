@@ -353,6 +353,16 @@ class StaffDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text("Command Center"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => context.go(AppRoutes.login),
+            tooltip: "Logout",
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {},
         icon: const Icon(Icons.notification_important_rounded),
@@ -379,11 +389,6 @@ class StaffDashboardScreen extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          "Command Center",
-                          style: context.textStyles.headlineMedium?.bold,
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
                         Text(
                           "Lighthouse Disaster Relief",
                           style: context.textStyles.bodyMedium?.copyWith(
@@ -609,6 +614,56 @@ class StaffDashboardScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 0,
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              break;
+            case 1:
+              context.go(AppRoutes.staffProjects);
+              break;
+            case 2:
+              context.go(AppRoutes.staffVolunteers);
+              break;
+            case 3:
+              context.go(AppRoutes.staffMaterials);
+              break;
+            case 4:
+              context.go(AppRoutes.staffFinancial);
+              break;
+            case 5:
+              context.go(AppRoutes.staffReports);
+              break;
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: "Dashboard",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.assignment),
+            label: "Projects",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.groups),
+            label: "Volunteers",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.inventory),
+            label: "Materials",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_balance),
+            label: "Financial",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.assessment),
+            label: "Reports",
+          ),
+        ],
       ),
     );
   }

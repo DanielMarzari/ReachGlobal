@@ -154,7 +154,7 @@ class ActiveDisasterCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () => context.push(AppRoutes.volunteerDashboard),
+                        onPressed: () => context.go(AppRoutes.login),
                         icon: const Icon(Icons.volunteer_activism),
                         label: const Text("Volunteer"),
                         style: OutlinedButton.styleFrom(
@@ -412,7 +412,7 @@ class PublicHomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: AppSpacing.md),
                         FilledButton(
-                          onPressed: () => context.push(AppRoutes.volunteerOnboarding),
+                          onPressed: () => context.go(AppRoutes.volunteerRegister),
                           style: FilledButton.styleFrom(
                             backgroundColor: Theme.of(context).colorScheme.surface,
                             foregroundColor: Theme.of(context).colorScheme.primary,
@@ -427,7 +427,7 @@ class PublicHomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: AppSpacing.md),
                         TextButton(
-                          onPressed: () => context.push(AppRoutes.staffDashboard),
+                          onPressed: () => context.go(AppRoutes.login),
                           style: TextButton.styleFrom(
                             foregroundColor: Theme.of(context).colorScheme.onPrimary,
                           ),

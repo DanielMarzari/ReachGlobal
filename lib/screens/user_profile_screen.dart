@@ -345,10 +345,17 @@ class UserProfileScreen extends StatelessWidget {
                       title: "Credentials & Waivers",
                       subtitle: "Background check expires in 4 months",
                     ),
-                    const SettingsItem(
-                      icon: Icons.notifications_none_rounded,
-                      title: "Alert Preferences",
-                      subtitle: "Hurricane and Tornado warnings",
+                    GestureDetector(
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Coming soon")),
+                        );
+                      },
+                      child: const SettingsItem(
+                        icon: Icons.notifications_none_rounded,
+                        title: "Alert Preferences",
+                        subtitle: "Hurricane and Tornado warnings",
+                      ),
                     ),
                     const SettingsItem(
                       icon: Icons.history_rounded,
@@ -361,10 +368,17 @@ class UserProfileScreen extends StatelessWidget {
                       style: context.textStyles.titleMedium?.bold,
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    const SettingsItem(
-                      icon: Icons.help_outline_rounded,
-                      title: "Help Center",
-                      subtitle: "Training videos and safety guides",
+                    GestureDetector(
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Coming soon")),
+                        );
+                      },
+                      child: const SettingsItem(
+                        icon: Icons.help_outline_rounded,
+                        title: "Help Center",
+                        subtitle: "Training videos and safety guides",
+                      ),
                     ),
                     const SettingsItem(
                       icon: Icons.info_outline_rounded,
@@ -373,7 +387,7 @@ class UserProfileScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.md),
                     TextButton.icon(
-                      onPressed: () => context.go(AppRoutes.home),
+                      onPressed: () => context.go(AppRoutes.login),
                       icon: const Icon(Icons.logout_rounded),
                       label: const Text("Sign Out"),
                       style: TextButton.styleFrom(

@@ -565,7 +565,7 @@ class ProjectDetailPublicScreen extends StatelessWidget {
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: InkWell(
-                      onTap: () => context.push(AppRoutes.volunteerDashboard),
+                      onTap: () => context.go(AppRoutes.volunteerRegister),
                       child: Container(
                         height: 56,
                         decoration: BoxDecoration(

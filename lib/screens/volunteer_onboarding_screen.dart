@@ -96,6 +96,10 @@ class VolunteerOnboardingScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Volunteer Onboarding"),
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+        ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(

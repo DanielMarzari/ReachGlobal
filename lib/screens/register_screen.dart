@@ -74,7 +74,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
-        context.go(AppRoutes.volunteerDashboard);
+        context.go(AppRoutes.volunteerOnboarding);
       }
     });
   }

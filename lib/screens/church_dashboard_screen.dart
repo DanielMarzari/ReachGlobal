@@ -384,9 +384,7 @@ class _ChurchDashboardScreenState extends State<ChurchDashboardScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {
-                setState(() => _selectedTabIndex = 1);
-              },
+              onPressed: () => context.go(AppRoutes.teamRoster),
               icon: const Icon(Icons.people),
               label: const Text('Manage Team'),
               style: ElevatedButton.styleFrom(
@@ -414,9 +412,9 @@ class _ChurchDashboardScreenState extends State<ChurchDashboardScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => context.push(AppRoutes.donationFlow),
-              icon: const Icon(Icons.favorite),
-              label: const Text('Make Donation'),
+              onPressed: () => context.go(AppRoutes.donationHistory),
+              icon: const Icon(Icons.history),
+              label: const Text('View Donations'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4A6741),
                 foregroundColor: Colors.white,
@@ -685,6 +683,11 @@ class _ChurchDashboardScreenState extends State<ChurchDashboardScreen> {
           IconButton(
             icon: const Icon(Icons.person),
             onPressed: () => context.push(AppRoutes.userProfile),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => context.go(AppRoutes.login),
+            tooltip: "Logout",
           ),
         ],
       ),

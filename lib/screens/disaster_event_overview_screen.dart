@@ -445,7 +445,7 @@ class DisasterEventOverviewScreen extends StatelessWidget {
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: FilledButton(
-                        onPressed: () => context.push(AppRoutes.volunteerDashboard),
+                        onPressed: () => context.go(AppRoutes.volunteerRegister),
                         style: FilledButton.styleFrom(
                           backgroundColor: Theme.of(context).colorScheme.primary,
                           foregroundColor: Theme.of(context).colorScheme.onPrimary,
