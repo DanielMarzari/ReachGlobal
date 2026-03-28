@@ -29,42 +29,76 @@ RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
   END;
 $$;
 
--- staff_event_permissions RLS
+-- ── RLS helper functions (SECURITY DEFINER to avoid recursive policy lookups) ──
+--
+-- is_disaster_manager: returns true if the current user has can_add_staff=true
+-- for the given disaster.  Called from staff_event_permissions policies so the
+-- function body must NOT be covered by those same policies — SECURITY DEFINER
+-- bypasses RLS when it queries staff_event_permissions itself.
+CREATE OR REPLACE FUNCTION public.is_disaster_manager(p_disaster_id uuid)
+RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.staff_event_permissions
+    WHERE user_id = auth.uid()
+      AND disaster_id = p_disaster_id
+      AND can_add_staff = true
+  );
+$$;
+
+-- is_staff_under_me: returns true if p_user_id shares any disaster with the
+-- current user AND the current user has can_add_staff on that disaster.
+CREATE OR REPLACE FUNCTION public.is_staff_under_me(p_user_id uuid)
+RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.staff_event_permissions mgr
+    JOIN public.staff_event_permissions sub
+      ON sub.disaster_id = mgr.disaster_id
+    WHERE mgr.user_id = auth.uid()
+      AND mgr.can_add_staff = true
+      AND sub.user_id = p_user_id
+  );
+$$;
+
+-- ── staff_event_permissions RLS ────────────────────────────────────────────────
 DROP POLICY IF EXISTS "staff_can_view_permissions"   ON public.staff_event_permissions;
 DROP POLICY IF EXISTS "staff_can_insert_permissions" ON public.staff_event_permissions;
 DROP POLICY IF EXISTS "staff_can_update_permissions" ON public.staff_event_permissions;
 DROP POLICY IF EXISTS "staff_can_delete_permissions" ON public.staff_event_permissions;
 
-CREATE POLICY "staff_can_view_permissions" ON public.staff_event_permissions FOR SELECT USING (
-  is_super_admin() OR user_id = auth.uid()
-  OR EXISTS (
-    SELECT 1 FROM public.staff_event_permissions mgr
-    WHERE mgr.user_id = auth.uid() AND mgr.disaster_id = staff_event_permissions.disaster_id AND mgr.can_add_staff = true
-  )
-);
-CREATE POLICY "staff_can_insert_permissions" ON public.staff_event_permissions FOR INSERT WITH CHECK (
-  is_super_admin() OR can_current_user_add_staff(disaster_id)
-);
-CREATE POLICY "staff_can_update_permissions" ON public.staff_event_permissions FOR UPDATE USING (
-  is_super_admin() OR EXISTS (
-    SELECT 1 FROM public.staff_event_permissions mgr
-    WHERE mgr.user_id = auth.uid() AND mgr.disaster_id = staff_event_permissions.disaster_id AND mgr.can_add_staff = true
-  )
-);
-CREATE POLICY "staff_can_delete_permissions" ON public.staff_event_permissions FOR DELETE USING (
-  is_super_admin() OR EXISTS (
-    SELECT 1 FROM public.staff_event_permissions mgr
-    WHERE mgr.user_id = auth.uid() AND mgr.disaster_id = staff_event_permissions.disaster_id AND mgr.can_add_staff = true
-  )
-);
+-- SELECT: own rows, super_admin, or manager of same disaster
+CREATE POLICY "staff_can_view_permissions" ON public.staff_event_permissions
+  FOR SELECT USING (
+    user_id = auth.uid()
+    OR is_super_admin()
+    OR is_disaster_manager(disaster_id)
+  );
 
--- profiles RLS: see self, people you created, and staff at your disasters
+-- INSERT: super_admin or a manager who has can_add_staff on that disaster
+CREATE POLICY "staff_can_insert_permissions" ON public.staff_event_permissions
+  FOR INSERT WITH CHECK (
+    is_super_admin() OR is_disaster_manager(disaster_id)
+  );
+
+-- UPDATE: super_admin or disaster manager
+CREATE POLICY "staff_can_update_permissions" ON public.staff_event_permissions
+  FOR UPDATE USING (
+    is_super_admin() OR is_disaster_manager(disaster_id)
+  );
+
+-- DELETE: super_admin or disaster manager
+CREATE POLICY "staff_can_delete_permissions" ON public.staff_event_permissions
+  FOR DELETE USING (
+    is_super_admin() OR is_disaster_manager(disaster_id)
+  );
+
+-- ── profiles RLS ───────────────────────────────────────────────────────────────
+-- See own row, anyone you directly created, all staff sharing your disaster,
+-- or super_admin sees everyone.
 DROP POLICY IF EXISTS "profiles_visible_to_managers" ON public.profiles;
-CREATE POLICY "profiles_visible_to_managers" ON public.profiles FOR SELECT USING (
-  id = auth.uid() OR is_super_admin() OR created_by = auth.uid()
-  OR EXISTS (
-    SELECT 1 FROM public.staff_event_permissions my_sep
-    JOIN public.staff_event_permissions their_sep ON their_sep.disaster_id = my_sep.disaster_id
-    WHERE my_sep.user_id = auth.uid() AND my_sep.can_add_staff = true AND their_sep.user_id = profiles.id
-  )
-);
+CREATE POLICY "profiles_visible_to_managers" ON public.profiles
+  FOR SELECT USING (
+    id = auth.uid()
+    OR is_super_admin()
+    OR created_by = auth.uid()
+    OR is_staff_under_me(id)
+  );
