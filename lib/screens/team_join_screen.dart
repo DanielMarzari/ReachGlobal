@@ -84,7 +84,7 @@ class _TeamJoinScreenState extends State<TeamJoinScreen> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: () => context.go(AppRoutes.home),
         ),
       ),
       body: SingleChildScrollView(

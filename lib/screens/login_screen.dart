@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../nav.dart';
+import '../services/auth_service.dart';
 import '../theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -32,23 +34,26 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleSignIn() async {
-    setState(() => _isLoading = true);
-
-    await Future.delayed(const Duration(milliseconds: 1500));
-
-    final email = _emailController.text.toLowerCase();
-    String route = AppRoutes.volunteerDashboard;
-
-    if (email.contains('staff')) {
-      route = AppRoutes.staffDashboard;
-    } else if (email.contains('church')) {
-      route = AppRoutes.churchDashboard;
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter your email and password.')),
+      );
+      return;
     }
-
-    setState(() => _isLoading = false);
-
-    if (mounted) {
-      context.go(route);
+    setState(() => _isLoading = true);
+    try {
+      final auth = context.read<AuthService>();
+      await auth.signIn(email, password);
+      if (mounted) context.go(auth.homeRoute);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
+      }
     }
   }
 

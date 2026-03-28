@@ -169,7 +169,7 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => context.pop(),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
@@ -183,7 +183,7 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
                       'email': emailController.text,
                     });
                   });
-                  Navigator.pop(context);
+                  context.pop();
                 }
               },
               child: const Text('Add'),
@@ -215,6 +215,10 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go(AppRoutes.staffDashboard),
+        ),
         title: Text(
           'Event Details',
           style: context.textStyles.titleMedium?.bold,

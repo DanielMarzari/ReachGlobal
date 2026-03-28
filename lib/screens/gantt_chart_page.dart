@@ -38,6 +38,10 @@ class GanttChartPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+        ),
         title: const Text("Project Timeline"),
         centerTitle: true,
       ),

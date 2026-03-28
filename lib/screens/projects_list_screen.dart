@@ -405,6 +405,27 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
               child: const Icon(Icons.add),
             )
           : null,
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 1,
+        onTap: (index) {
+          switch (index) {
+            case 0: context.go(AppRoutes.staffDashboard); break;
+            case 1: context.go(AppRoutes.staffProjects); break;
+            case 2: context.go(AppRoutes.staffVolunteers); break;
+            case 3: context.go(AppRoutes.staffMaterials); break;
+            case 4: context.go(AppRoutes.staffFinancial); break;
+            case 5: context.go(AppRoutes.staffReports); break;
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Dashboard"),
+          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: "Projects"),
+          BottomNavigationBarItem(icon: Icon(Icons.groups), label: "Volunteers"),
+          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Materials"),
+          BottomNavigationBarItem(icon: Icon(Icons.account_balance), label: "Financial"),
+          BottomNavigationBarItem(icon: Icon(Icons.assessment), label: "Reports"),
+        ],
+      ),
     );
   }
 }

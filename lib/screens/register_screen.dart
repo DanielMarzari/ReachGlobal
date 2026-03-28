@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../nav.dart';
+import '../services/auth_service.dart';
 import '../theme.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -65,18 +67,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _handleCreateAccount() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Account created! Welcome to Lighthouse.'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-    Future.delayed(const Duration(milliseconds: 500), () {
+  bool _isLoading = false;
+
+  Future<void> _handleCreateAccount() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final fullName = _fullNameController.text.trim();
+    final phone = _phoneController.text.trim();
+
+    if (email.isEmpty || password.isEmpty || fullName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Name, email, and password are required.')),
+      );
+      return;
+    }
+    if (password != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Passwords do not match.')),
+      );
+      return;
+    }
+    if (password.length < 8) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password must be at least 8 characters.')),
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      await context.read<AuthService>().signUp(
+        email: email,
+        password: password,
+        fullName: fullName,
+        phone: phone,
+        role: 'volunteer',
+      );
+      if (mounted) context.go(AppRoutes.volunteerOnboarding);
+    } catch (e) {
       if (mounted) {
-        context.go(AppRoutes.volunteerOnboarding);
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
       }
-    });
+    }
   }
 
   @override
@@ -369,7 +403,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _handleCreateAccount,
+                onPressed: _isLoading ? null : _handleCreateAccount,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1B3A5C),
                   foregroundColor: Colors.white,
@@ -378,13 +412,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                 ),
-                child: Text(
-                  'Create Account',
-                  style: context.textStyles.labelLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+                child: _isLoading
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : Text(
+                        'Create Account',
+                        style: context.textStyles.labelLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ),
             SizedBox(height: AppSpacing.md),

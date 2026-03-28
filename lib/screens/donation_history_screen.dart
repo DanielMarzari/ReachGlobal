@@ -187,6 +187,10 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go(AppRoutes.churchDashboard),
+        ),
         title: Text(
           'Giving History',
           style: context.textStyles.titleMedium?.copyWith(
