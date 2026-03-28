@@ -102,15 +102,16 @@ class AuthService extends ChangeNotifier {
   // ── Auth operations ───────────────────────────────────────────────────────
 
   Future<void> signIn(String email, String password) async {
-    await SupabaseService.auth.signInWithPassword(
+    final response = await SupabaseService.auth.signInWithPassword(
       email: email,
       password: password,
     );
-    // Wait for profile to load after sign-in to ensure role is available
-    await Future.delayed(const Duration(milliseconds: 500));
-    while (_profileLoading) {
-      await Future.delayed(const Duration(milliseconds: 100));
-    }
+    // Set user directly from response — don't rely on stream timing
+    _user = response.user;
+    // Reset loading flag in case a previous call left it stuck
+    _profileLoading = false;
+    // Load profile synchronously before returning so homeRoute has role data
+    await _loadProfile();
   }
 
   Future<void> signUp({
