@@ -112,12 +112,20 @@ class AuthService extends ChangeNotifier {
       email: email,
       password: password,
     );
-    // Set user directly from response — don't rely on stream timing
     _user = response.user;
-    // Reset loading flag in case a previous call left it stuck
-    _profileLoading = false;
-    // Load profile synchronously before returning so homeRoute has role data
-    await _loadProfile();
+    // Query profile directly — bypasses the _profileLoading guard that can
+    // race with the auth stream listener and leave _profile null.
+    if (_user != null) {
+      try {
+        _profile = await SupabaseService.client
+            .from('profiles')
+            .select()
+            .eq('id', _user!.id)
+            .maybeSingle();
+      } catch (_) {}
+    }
+    // notifyListeners() will be called by the stream listener — that's fine
+    // since _profile is already set by the time it fires.
   }
 
   Future<void> signUp({

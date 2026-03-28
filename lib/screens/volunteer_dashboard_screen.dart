@@ -277,10 +277,7 @@ class VolunteerDashboardScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: "Logout",
-            onPressed: () async {
-              await context.read<AuthService>().signOut();
-              if (context.mounted) context.go(AppRoutes.login);
-            },
+            onPressed: () => context.read<AuthService>().signOut(),
           ),
         ],
       ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
 import '../theme.dart';
 import '../nav.dart';
 
@@ -387,7 +389,7 @@ class UserProfileScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.md),
                     TextButton.icon(
-                      onPressed: () => context.go(AppRoutes.login),
+                      onPressed: () => context.read<AuthService>().signOut(),
                       icon: const Icon(Icons.logout_rounded),
                       label: const Text("Sign Out"),
                       style: TextButton.styleFrom(
