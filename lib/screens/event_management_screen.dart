@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../theme.dart';
 import '../nav.dart';
+import '../services/auth_service.dart';
+import '../services/supabase_service.dart';
 
 class EventManagementScreen extends StatefulWidget {
   const EventManagementScreen({Key? key}) : super(key: key);
@@ -27,43 +30,23 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
   DateTime? _selectedStartDate;
   bool _isPublic = true;
   String _selectedStatus = 'active';
+  bool _isSaving = false;
 
   final List<String> _disasterTypes = [
     'tornado',
     'flood',
     'fire',
     'hurricane',
+    'earthquake',
     'other'
   ];
 
   final List<String> _statuses = ['active', 'winding_down', 'closed'];
 
-  final List<Map<String, dynamic>> _mockCoordinators = [
-    {
-      'id': '1',
-      'name': 'John Martinez',
-      'email': 'john@example.com',
-    },
-    {
-      'id': '2',
-      'name': 'Sarah Chen',
-      'email': 'sarah@example.com',
-    },
-  ];
-
-  List<Map<String, dynamic>> _coordinators = [];
-
   @override
   void initState() {
     super.initState();
-    _coordinators = List.from(_mockCoordinators);
-    // Initialize form with mock data
-    _eventNameController.text = 'Springfield Tornado Relief - March 2025';
-    _locationController.text = 'Springfield, IL';
-    _baseCampController.text = '2500 Industrial Drive, Springfield, IL';
-    _descriptionController.text =
-        'Disaster relief operations for the March 15th tornado. Coordinating debris removal, structural repairs, and rebuilding efforts.';
-    _selectedStartDate = DateTime(2025, 3, 15);
+    _selectedStartDate = DateTime.now();
   }
 
   @override
@@ -85,6 +68,8 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
         return 'Fire';
       case 'hurricane':
         return 'Hurricane';
+      case 'earthquake':
+        return 'Earthquake';
       case 'other':
         return 'Other';
       default:
@@ -132,82 +117,42 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
     }
   }
 
-  void _addCoordinator() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        TextEditingController nameController = TextEditingController();
-        TextEditingController emailController = TextEditingController();
-
-        return AlertDialog(
-          title: const Text('Add Staff Coordinator'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  labelText: 'Name',
-                  border: OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppRadius.md),
-                  ),
-                ),
-              ),
-              SizedBox(height: AppSpacing.md),
-              TextField(
-                controller: emailController,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppRadius.md),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => context.pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (nameController.text.isNotEmpty &&
-                    emailController.text.isNotEmpty) {
-                  setState(() {
-                    _coordinators.add({
-                      'id': DateTime.now().toString(),
-                      'name': nameController.text,
-                      'email': emailController.text,
-                    });
-                  });
-                  context.pop();
-                }
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _removeCoordinator(String id) {
-    setState(() {
-      _coordinators.removeWhere((c) => c['id'] == id);
-    });
-  }
-
-  void _saveEvent() {
-    if (_formKey.currentState!.validate()) {
+  Future<void> _saveEvent() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedStartDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Event saved successfully'),
-          duration: Duration(seconds: 2),
-        ),
+        const SnackBar(content: Text('Please select a start date.')),
       );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      final userId = context.read<AuthService>().userId;
+      await SupabaseService.client.from('disasters').insert({
+        'name': _eventNameController.text.trim(),
+        'type': _selectedDisasterType,
+        'location_name': _locationController.text.trim(),
+        'start_date': _selectedStartDate!.toIso8601String().substring(0, 10),
+        'base_camp_addr': _baseCampController.text.trim(),
+        'description': _descriptionController.text.trim(),
+        'public_visible': _isPublic,
+        'status': _selectedStatus,
+        'created_by': userId,
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Response created successfully.')),
+        );
+        context.go(AppRoutes.staffDashboard);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
+      }
     }
   }
 
@@ -220,7 +165,7 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
           onPressed: () => context.go(AppRoutes.staffDashboard),
         ),
         title: Text(
-          'Event Details',
+          'Create Response',
           style: context.textStyles.titleMedium?.bold,
         ),
         elevation: 0,
@@ -489,100 +434,25 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
                 },
               ),
               SizedBox(height: AppSpacing.xl),
-              // Staff Coordinators Section
-              Container(
-                padding: EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .surface,
-                  borderRadius:
-                      BorderRadius.circular(AppRadius.lg),
-                  border:
-                      Border.all(color: Theme.of(context).dividerColor),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Staff Coordinators',
-                          style:
-                              context.textStyles.labelSmall?.bold,
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add_circle),
-                          onPressed: _addCoordinator,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary,
-                        ),
-                      ],
-                    ),
-                    if (_coordinators.isEmpty)
-                      Text(
-                        'No coordinators assigned yet',
-                        style: context.textStyles.bodySmall,
-                      )
-                    else
-                      Column(
-                        children: _coordinators.map((coordinator) {
-                          return Padding(
-                            padding: EdgeInsets.symmetric(
-                                vertical: AppSpacing.sm),
-                            child: Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment
-                                      .spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment
-                                            .start,
-                                    children: [
-                                      Text(
-                                        coordinator['name'],
-                                        style: context
-                                            .textStyles
-                                            .labelSmall
-                                            ?.bold,
-                                      ),
-                                      Text(
-                                        coordinator['email'],
-                                        style: context
-                                            .textStyles
-                                            .bodySmall,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                      Icons.delete_outline),
-                                  onPressed: () =>
-                                      _removeCoordinator(
-                                          coordinator['id']),
-                                  color: const Color(0xFFBA1A1A),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                  ],
-                ),
-              ),
-              SizedBox(height: AppSpacing.xl),
               // Save button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _saveEvent,
-                  child: const Text('Save Event'),
+                  onPressed: _isSaving ? null : _saveEvent,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1B3A5C),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          height: 20, width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('Create Response'),
                 ),
               ),
             ],
