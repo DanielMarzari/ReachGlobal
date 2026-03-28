@@ -317,11 +317,6 @@ class PublicHomeScreen extends StatelessWidget {
               ),
               LayoutBuilder(
                 builder: (context, constraints) {
-                  // Constrain max width on larger screens so content doesn't stretch.
-                  final maxContentWidth = constraints.maxWidth >= 1100
-                      ? 1040.0
-                      : (constraints.maxWidth >= 800 ? 860.0 : double.infinity);
-
                   final events = <Widget>[
                     const ActiveDisasterCard(
                       title: "Hurricane Idalia Recovery",
@@ -364,53 +359,48 @@ class PublicHomeScreen extends StatelessWidget {
                           children: events,
                         );
 
-                  return Center(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: maxContentWidth),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      "Active Responses",
-                                      style: context.textStyles.titleLarge?.bold,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  GestureDetector(
-                                    onTap: () => context.push(AppRoutes.eventOverview),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          "View Map",
-                                          style: context.textStyles.labelLarge?.bold.copyWith(
-                                            color: Theme.of(context).colorScheme.primary,
-                                          ),
-                                        ),
-                                        const SizedBox(width: AppSpacing.xs),
-                                        Icon(
-                                          Icons.map,
-                                          color: Theme.of(context).colorScheme.primary,
-                                          size: 18,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  "Active Responses",
+                                  style: context.textStyles.titleLarge?.bold,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                            ),
-                            cards,
-                          ],
+                              GestureDetector(
+                                onTap: () => context.push(AppRoutes.eventOverview),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      "View Map",
+                                      style: context.textStyles.labelLarge?.bold.copyWith(
+                                        color: Theme.of(context).colorScheme.primary,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSpacing.xs),
+                                    Icon(
+                                      Icons.map,
+                                      color: Theme.of(context).colorScheme.primary,
+                                      size: 18,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                        cards,
+                      ],
                     ),
                   );
                 },
