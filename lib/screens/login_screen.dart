@@ -33,6 +33,30 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _handleForgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter your email above first.')),
+      );
+      return;
+    }
+    try {
+      await context.read<AuthService>().resetPassword(email);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password reset email sent.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
+      }
+    }
+  }
+
   Future<void> _handleSignIn() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -64,6 +88,14 @@ class _LoginScreenState extends State<LoginScreen> {
         final isWide = constraints.maxWidth > 600;
 
         return Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.go(AppRoutes.home),
+            ),
+          ),
           body: SafeArea(
             child: SingleChildScrollView(
               child: Center(
@@ -78,7 +110,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      SizedBox(height: AppSpacing.xl),
                       // Logo area
                       Icon(
                         Icons.wb_sunny_rounded,
@@ -154,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: _isLoading ? null : () {},
+                          onPressed: _isLoading ? null : _handleForgotPassword,
                           child: Text(
                             'Forgot password?',
                             style: context.textStyles.labelSmall?.copyWith(
@@ -218,11 +249,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       SizedBox(height: AppSpacing.lg),
 
-                      // Register button
+                      // Create Account button
                       SizedBox(
                         width: double.infinity,
                         child: OutlinedButton(
-                          onPressed: _isLoading ? null : () => context.go(AppRoutes.volunteerRegister),
+                          onPressed: _isLoading ? null : () => context.go(AppRoutes.register),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
                               color: Theme.of(context).colorScheme.primary,
@@ -233,7 +264,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           child: Text(
-                            'Volunteer? Register here',
+                            'Create Account',
                             style: context.textStyles.labelLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: Theme.of(context).colorScheme.primary,
