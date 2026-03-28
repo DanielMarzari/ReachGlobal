@@ -246,24 +246,30 @@ class PublicHomeScreen extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Lighthouse",
-                          style: context.textStyles.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: Theme.of(context).colorScheme.primary,
-                            height: 1,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Lighthouse",
+                            style: context.textStyles.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: Theme.of(context).colorScheme.primary,
+                              height: 1,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        Text(
-                          "Disaster Relief Coordination",
-                          style: context.textStyles.labelMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          Text(
+                            "Disaster Relief Coordination",
+                            style: context.textStyles.labelMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     GestureDetector(
                       onTap: () => context.push(AppRoutes.userProfile),
@@ -309,43 +315,15 @@ class PublicHomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.md),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Active Responses",
-                      style: context.textStyles.titleLarge?.bold,
-                    ),
-                    GestureDetector(
-                      onTap: () => context.push(AppRoutes.eventOverview),
-                      child: Row(
-                        children: [
-                          Text(
-                            "View Map",
-                            style: context.textStyles.labelLarge?.bold.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.xs),
-                          Icon(
-                            Icons.map,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: 18,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: AppSpacing.horizontalLg,
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ActiveDisasterCard(
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  // Constrain max width on larger screens so content doesn't stretch.
+                  final maxContentWidth = constraints.maxWidth >= 1100
+                      ? 1040.0
+                      : (constraints.maxWidth >= 800 ? 860.0 : double.infinity);
+
+                  final events = <Widget>[
+                    const ActiveDisasterCard(
                       title: "Hurricane Idalia Recovery",
                       location: "Florida, USA",
                       imagePath: "assets/images/flooded_street_with_destroyed_houses_gray_1774661707841.jpg",
@@ -353,7 +331,7 @@ class PublicHomeScreen extends StatelessWidget {
                       progressVal: 0.64,
                       status: "ACTIVE",
                     ),
-                    ActiveDisasterCard(
+                    const ActiveDisasterCard(
                       title: "Maui Wildfire Relief",
                       location: "Lahaina, HI",
                       imagePath: "assets/images/burnt_trees_and_buildings_landscape_gray_1774661708379.jpg",
@@ -361,7 +339,7 @@ class PublicHomeScreen extends StatelessWidget {
                       progressVal: 0.32,
                       status: "URGENT",
                     ),
-                    ActiveDisasterCard(
+                    const ActiveDisasterCard(
                       title: "Midwest Tornado Response",
                       location: "Arkansas, USA",
                       imagePath: "assets/images/debris_from_tornado_damage_gray_1774661709111.jpg",
@@ -369,8 +347,73 @@ class PublicHomeScreen extends StatelessWidget {
                       progressVal: 0.88,
                       status: "STABILIZING",
                     ),
-                  ],
-                ),
+                  ];
+
+                  final isMobile = constraints.maxWidth < 700;
+                  final isDesktop = constraints.maxWidth >= 1100;
+
+                  final cards = isMobile
+                      ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: events)
+                      : GridView.count(
+                          crossAxisCount: isDesktop ? 3 : 2,
+                          mainAxisSpacing: AppSpacing.lg,
+                          crossAxisSpacing: AppSpacing.lg,
+                          childAspectRatio: isDesktop ? 1.15 : 1.05,
+                          physics: const NeverScrollableScrollPhysics(),
+                          shrinkWrap: true,
+                          children: events,
+                        );
+
+                  return Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: maxContentWidth),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      "Active Responses",
+                                      style: context.textStyles.titleLarge?.bold,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => context.push(AppRoutes.eventOverview),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          "View Map",
+                                          style: context.textStyles.labelLarge?.bold.copyWith(
+                                            color: Theme.of(context).colorScheme.primary,
+                                          ),
+                                        ),
+                                        const SizedBox(width: AppSpacing.xs),
+                                        Icon(
+                                          Icons.map,
+                                          color: Theme.of(context).colorScheme.primary,
+                                          size: 18,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            cards,
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
               Container(
                 margin: AppSpacing.paddingLg,
