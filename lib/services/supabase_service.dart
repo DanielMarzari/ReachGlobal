@@ -1,14 +1,13 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:lighthouse/supabase/supabase_config.dart';
 
 /// Central Supabase client accessor.
 /// Call [SupabaseService.client] anywhere in the app after [Supabase.initialize()].
 class SupabaseService {
-  static const String projectUrl = 'https://sqhpxtfnnupcdgjjhsgc.supabase.co';
-  // Publishable (anon) key — safe to ship in client code.
-  static const String anonKey =
-      'sb_publishable_iJkjw6MSgiyIR10yy3sn3g_x_Kl5bbK';
+  static const String projectUrl = SupabaseConfig.supabaseUrl;
+  static const String anonKey = SupabaseConfig.anonKey;
 
-  static SupabaseClient get client => Supabase.instance.client;
+  static SupabaseClient get client => SupabaseConfig.client;
 
   // ── Convenience getters ─────────────────────────────────────────────────
   static GoTrueClient get auth => client.auth;

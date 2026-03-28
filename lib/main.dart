@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'theme.dart';
 import 'nav.dart';
 import 'services/auth_service.dart';
-import 'services/supabase_service.dart';
+import 'supabase/supabase_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Supabase.initialize(
-    url: SupabaseService.projectUrl,
-    anonKey: SupabaseService.anonKey,
-  );
+  await SupabaseConfig.initialize();
 
   runApp(
     ChangeNotifierProvider(
