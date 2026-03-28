@@ -153,7 +153,7 @@ class EventSummaryCard extends StatelessWidget {
                     color: Theme.of(context).colorScheme.surface,
                     child: Center(
                       child: Icon(
-                        Icons.disaster_rounded,
+                        Icons.report_problem_rounded,
                         color: Theme.of(context).colorScheme.primary,
                         size: 48,
                       ),
