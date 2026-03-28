@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import '../theme.dart';
 import '../nav.dart';
 import '../services/auth_service.dart';
@@ -16,6 +20,11 @@ class EventManagementScreen extends StatefulWidget {
 
 class _EventManagementScreenState extends State<EventManagementScreen> {
   final _formKey = GlobalKey<FormState>();
+
+  final _coverPicker = ImagePicker();
+  Uint8List? _coverBytes;
+  String? _coverPublicUrl;
+  bool _coverUploading = false;
 
   final TextEditingController _eventNameController =
       TextEditingController();
@@ -132,7 +141,7 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
     setState(() => _isSaving = true);
     try {
       final userId = context.read<AuthService>().userId;
-      final coverUrl = _coverImageController.text.trim();
+      final coverUrl = (_coverPublicUrl ?? _coverImageController.text).trim();
       final result = await SupabaseService.client.from('disasters').insert({
         'name': _eventNameController.text.trim(),
         'type': _selectedDisasterType,
@@ -162,6 +171,109 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
         );
       }
     }
+  }
+
+  Future<void> _pickCoverImage(ImageSource source) async {
+    if (_coverUploading) return;
+    try {
+      // image_picker is not supported on every Flutter target.
+      if (!kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.linux ||
+              defaultTargetPlatform == TargetPlatform.windows)) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Image picking isn\'t supported on this platform.')),
+        );
+        return;
+      }
+
+      final file = await _coverPicker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        imageQuality: 85,
+      );
+      if (file == null) return;
+
+      setState(() {
+        _coverUploading = true;
+        _coverBytes = null;
+        _coverPublicUrl = null;
+      });
+
+      final bytes = await file.readAsBytes();
+      final ext = file.name.split('.').last.toLowerCase();
+      final uid = context.read<AuthService>().userId;
+      final path = 'disasters/drafts/$uid/${DateTime.now().millisecondsSinceEpoch}.$ext';
+
+      await SupabaseService.storage.from('project-photos').uploadBinary(path, bytes);
+      final url = SupabaseService.storage.from('project-photos').getPublicUrl(path);
+
+      if (!mounted) return;
+      setState(() {
+        _coverUploading = false;
+        _coverBytes = bytes;
+        _coverPublicUrl = url;
+        _coverImageController.text = url;
+      });
+    } on MissingPluginException catch (e) {
+      debugPrint('Image picker plugin missing: $e');
+      if (!mounted) return;
+      setState(() => _coverUploading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Image picker is unavailable in this build. Try a full restart, or run on web/mobile.'),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Cover upload failed: $e');
+      if (!mounted) return;
+      setState(() => _coverUploading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Cover upload failed: $e')),
+      );
+    }
+  }
+
+  void _showCoverSourceSheet() {
+    if (kIsWeb) {
+      _pickCoverImage(ImageSource.gallery);
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      useSafeArea: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded),
+              title: const Text('Take a photo'),
+              onTap: () {
+                ctx.pop();
+                _pickCoverImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded),
+              title: const Text('Choose from gallery'),
+              onTap: () {
+                ctx.pop();
+                _pickCoverImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _removeCover() {
+    setState(() {
+      _coverBytes = null;
+      _coverPublicUrl = null;
+      _coverImageController.clear();
+    });
   }
 
   @override
@@ -442,27 +554,90 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
                 },
               ),
               SizedBox(height: AppSpacing.lg),
-              // Cover Image URL (optional — can also be set during Response Setup)
-              Text(
-                'Cover Image URL (optional)',
-                style: context.textStyles.labelSmall?.bold,
+              Text('Cover Image (optional)', style: context.textStyles.labelSmall?.bold),
+              SizedBox(height: AppSpacing.sm),
+              GestureDetector(
+                onTap: _showCoverSourceSheet,
+                child: Container(
+                  height: 160,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(color: Theme.of(context).dividerColor),
+                    color: Theme.of(context).colorScheme.surface,
+                  ),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        child: (_coverPublicUrl != null && _coverPublicUrl!.isNotEmpty)
+                            ? Image.network(_coverPublicUrl!, fit: BoxFit.cover)
+                            : (_coverBytes != null)
+                                ? Image.memory(_coverBytes!, fit: BoxFit.cover)
+                                : Container(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withValues(alpha: 0.06),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.cloud_upload_rounded,
+                                            size: 36,
+                                            color: Theme.of(context).colorScheme.primary),
+                                        SizedBox(height: AppSpacing.sm),
+                                        Text('Upload cover image',
+                                            style: context.textStyles.bodyMedium?.copyWith(
+                                                color: Theme.of(context).colorScheme.primary,
+                                                fontWeight: FontWeight.w600)),
+                                        SizedBox(height: 4),
+                                        Text('JPG/PNG • Tap to choose',
+                                            style: context.textStyles.bodySmall
+                                                ?.copyWith(color: Colors.grey[600])),
+                                      ],
+                                    ),
+                                  ),
+                      ),
+                      if (_coverUploading)
+                        Container(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          child: const Center(child: CircularProgressIndicator()),
+                        ),
+                      if (!_coverUploading && (_coverPublicUrl?.isNotEmpty ?? false))
+                        Positioned(
+                          right: 10,
+                          top: 10,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton.filled(
+                                onPressed: _showCoverSourceSheet,
+                                icon: const Icon(Icons.edit_rounded, size: 18),
+                                style: IconButton.styleFrom(
+                                  backgroundColor: Colors.black.withValues(alpha: 0.45),
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              IconButton.filled(
+                                onPressed: _removeCover,
+                                icon: const Icon(Icons.close_rounded, size: 18),
+                                style: IconButton.styleFrom(
+                                  backgroundColor: Colors.black.withValues(alpha: 0.45),
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
               SizedBox(height: AppSpacing.sm),
-              TextFormField(
-                controller: _coverImageController,
-                decoration: InputDecoration(
-                  hintText: 'https://...',
-                  prefixIcon: const Icon(Icons.image_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
-                  helperText: 'Leave blank — you can add site photos in the next step.',
-                ),
-                keyboardType: TextInputType.url,
+              Text(
+                'Tip: You can also add site photos in the next step — the first site photo becomes the cover image.',
+                style: context.textStyles.bodySmall?.copyWith(color: Colors.grey[600]),
               ),
               SizedBox(height: AppSpacing.xl),
               // Save button

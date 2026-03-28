@@ -1071,7 +1071,7 @@ class _ResponseSetupScreenState extends State<ResponseSetupScreen> {
                       _summaryRow('Total floor area',
                           '${(est['totalFloor'] as double).toStringAsFixed(0)} sq ft'),
                       _summaryRow('Damaged wall/ceiling area',
-                          '${(est['totalWall'] as double + (est['totalWall'] as double)).toStringAsFixed(0)} sq ft'),
+                          '${((est['totalWall'] as double) + (est['totalCeiling'] as double)).toStringAsFixed(0)} sq ft'),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),
