@@ -72,7 +72,7 @@ class AppRoutes {
   static const String responseSetup      = '/staff/response-setup';
   static const String disasterDashboard  = '/staff/disaster';
   static const String worksiteSetup      = '/staff/worksite-setup';
-  static const String worksiteDetail     = '/staff/worksite';
+  static const String worksiteDetail     = '/staff/worksite/:worksiteId';
   // Shared
   static const String ganttChart         = '/gantt';
 }
@@ -344,11 +344,9 @@ class AppRouter {
       path: AppRoutes.worksiteDetail,
       name: 'worksiteDetail',
       pageBuilder: (c, s) {
-        final extra = s.extra as Map<String, dynamic>? ?? {};
+        final worksiteId = s.pathParameters['worksiteId'] ?? '';
         return MaterialPage(
-          child: WorksiteDetailScreen(
-            worksiteId: extra['worksiteId'] as String? ?? '',
-          ),
+          child: WorksiteDetailScreen(worksiteId: worksiteId),
         );
       },
     ),

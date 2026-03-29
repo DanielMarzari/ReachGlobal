@@ -362,8 +362,7 @@ class _DisasterDashboardScreenState
                 .colorScheme
                 .onSurfaceVariant),
         onTap: () => context.push(
-          AppRoutes.worksiteDetail,
-          extra: {'worksiteId': w['id'] as String},
+          '/staff/worksite/${w['id']}',
         ),
       ),
     );
