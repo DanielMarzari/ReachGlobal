@@ -124,7 +124,7 @@ class EventSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: disasterId != null
-          ? () => context.push(AppRoutes.responseSetup,
+          ? () => context.push(AppRoutes.disasterDashboard,
               extra: {'disasterId': disasterId, 'disasterName': title})
           : null,
       borderRadius: BorderRadius.circular(AppRadius.xl),
@@ -411,14 +411,14 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
         // Super admin sees all active disasters
         data = await SupabaseService.client
             .from('disasters')
-            .select('id, name, type, location_name, status, cover_image_url')
+            .select('id, name, type, location_name, status, image_url')
             .eq('status', 'active')
             .order('created_at', ascending: false);
       } else {
         // Coordinator sees only assigned disasters
         data = await SupabaseService.client
             .from('disasters')
-            .select('id, name, type, location_name, status, cover_image_url, staff_event_permissions!inner(user_id)')
+            .select('id, name, type, location_name, status, image_url, staff_event_permissions!inner(user_id)')
             .eq('status', 'active')
             .eq('staff_event_permissions.user_id', SupabaseService.currentUser?.id ?? '');
       }
@@ -583,7 +583,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                       ...(_disasters.map((d) => EventSummaryCard(
                         title: d['name'] as String,
                         location: d['location_name'] as String,
-                        coverImageUrl: d['cover_image_url'] as String?,
+                        coverImageUrl: d['image_url'] as String?,
                         imgDesc: null,
                         status: (d['status'] as String).toUpperCase(),
                         progress: '—',
