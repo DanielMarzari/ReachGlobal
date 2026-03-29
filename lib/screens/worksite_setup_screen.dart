@@ -33,7 +33,7 @@ const List<_Phase> _kPhases = [
       Icons.delete_sweep_rounded, 'Debris Removal',
       'Clear storm, fire, or flood debris from property'),
   _Phase('mold_remediation', 'Emergency',
-      Icons.masks_rounded, 'Mold Remediation',
+      Icons.warning_amber_rounded, 'Mold Remediation',
       'Treat and remove mold; dry out structural materials'),
   _Phase('structural_assessment', 'Emergency',
       Icons.search_rounded, 'Structural Assessment',
@@ -44,10 +44,10 @@ const List<_Phase> _kPhases = [
 
   // Foundation & Structural
   _Phase('foundation_repair', 'Structural',
-      Icons.foundation_rounded, 'Foundation Repair',
+      Icons.vertical_align_bottom_rounded, 'Foundation Repair',
       'Crack repair, leveling, waterproofing'),
   _Phase('framing', 'Structural',
-      Icons.grid_4x4_rounded, 'Framing / Structural Repairs',
+      Icons.grid_view_rounded, 'Framing / Structural Repairs',
       'Sister joists, replace studs, reinforce structure'),
 
   // MEP Rough-In
@@ -96,7 +96,7 @@ const List<_Phase> _kPhases = [
 
   // MEP Finish
   _Phase('electrical_finish', 'MEP Finish',
-      Icons.outlet_rounded, 'Electrical – Finish',
+      Icons.electrical_services_rounded, 'Electrical – Finish',
       'Install outlets, switches, fixtures, panels'),
   _Phase('plumbing_fixtures', 'MEP Finish',
       Icons.plumbing_rounded, 'Plumbing – Fixtures',
@@ -104,7 +104,7 @@ const List<_Phase> _kPhases = [
 
   // Interior Finish
   _Phase('door_trim', 'Interior Finish',
-      Icons.door_back_door_rounded, 'Door Frames & Trim',
+      Icons.sensor_door_rounded, 'Door Frames & Trim',
       'Hang doors, install casing and baseboards'),
   _Phase('window_trim', 'Interior Finish',
       Icons.window_rounded, 'Window Trim & Sills',
@@ -116,24 +116,24 @@ const List<_Phase> _kPhases = [
       Icons.bathroom_rounded, 'Cabinetry – Bathroom',
       'Vanities and medicine cabinets'),
   _Phase('countertops', 'Interior Finish',
-      Icons.table_restaurant_rounded, 'Countertops',
+      Icons.countertops_rounded, 'Countertops',
       'Laminate, butcher block, or stone install'),
 
   // Flooring
   _Phase('subfloor', 'Flooring',
-      Icons.view_compact_rounded, 'Subfloor Repair / Replace',
+      Icons.table_rows_rounded, 'Subfloor Repair / Replace',
       'Sistering, OSB replacement, leveling'),
   _Phase('flooring_lvp', 'Flooring',
       Icons.texture_rounded, 'Flooring – LVP / Laminate',
       'Click-lock vinyl plank or laminate'),
   _Phase('flooring_tile', 'Flooring',
-      Icons.grid_3x3_rounded, 'Flooring – Tile',
+      Icons.grid_on_rounded, 'Flooring – Tile',
       'Floor and wall tile (bathroom, kitchen)'),
   _Phase('flooring_carpet', 'Flooring',
-      Icons.hotel_rounded, 'Flooring – Carpet',
+      Icons.king_bed_rounded, 'Flooring – Carpet',
       'Stretch and install carpet and pad'),
   _Phase('flooring_hardwood', 'Flooring',
-      Icons.park_rounded, 'Flooring – Hardwood',
+      Icons.nature_rounded, 'Flooring – Hardwood',
       'Nail-down or floating hardwood floors'),
 
   // Exterior
@@ -149,7 +149,7 @@ const List<_Phase> _kPhases = [
 
   // Site / Final
   _Phase('landscaping_cleanup', 'Site / Final',
-      Icons.grass_rounded, 'Landscaping & Site Cleanup',
+      Icons.yard_rounded, 'Landscaping & Site Cleanup',
       'Grade, seed, clean driveway and yard'),
   _Phase('deep_clean', 'Site / Final',
       Icons.cleaning_services_rounded, 'Final Deep Clean',
