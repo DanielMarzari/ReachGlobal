@@ -1,6 +1,13 @@
+import 'dart:math';
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme.dart';
 import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
@@ -92,7 +99,7 @@ const List<_Phase> _kPhases = [
       Icons.outlet_rounded, 'Electrical – Finish',
       'Install outlets, switches, fixtures, panels'),
   _Phase('plumbing_fixtures', 'MEP Finish',
-      Icons.faucet_rounded, 'Plumbing – Fixtures',
+      Icons.plumbing_rounded, 'Plumbing – Fixtures',
       'Set toilets, sinks, tubs, shower valves'),
 
   // Interior Finish
@@ -163,9 +170,11 @@ const List<Map<String, String>> _kPropertyTypes = [
 class _PhotoEntry {
   TextEditingController urlController;
   TextEditingController captionController;
+  bool uploading;
   _PhotoEntry()
       : urlController = TextEditingController(),
-        captionController = TextEditingController();
+        captionController = TextEditingController(),
+        uploading = false;
   void dispose() {
     urlController.dispose();
     captionController.dispose();
@@ -204,6 +213,9 @@ class _WorksiteSetupScreenState extends State<WorksiteSetupScreen> {
 
   // ── Step 2: Photos ────────────────────────────────────────────────────────
   final List<_PhotoEntry> _photos = [_PhotoEntry()];
+
+  static const String _kStorageBucket = 'project-photos';
+  final ImagePicker _imagePicker = ImagePicker();
 
   // ── Step 3: Work phases ───────────────────────────────────────────────────
   final Set<String> _selectedPhases = {};
@@ -279,6 +291,84 @@ class _WorksiteSetupScreenState extends State<WorksiteSetupScreen> {
                   e.toString().replaceAll('Exception: ', ''))),
         );
       }
+    }
+  }
+
+  String _generateStoragePath(String worksiteId, String originalName) {
+    final ext = (originalName.contains('.')
+            ? originalName.split('.').last.toLowerCase()
+            : 'jpg')
+        .replaceAll(RegExp(r'[^a-z0-9]'), '');
+    final safeExt = (ext.isEmpty || ext.length > 6) ? 'jpg' : ext;
+    final rand = Random.secure().nextInt(1 << 32);
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    return 'worksites/$worksiteId/$ts-$rand.$safeExt';
+  }
+
+  String _guessContentType(String filename) {
+    final ext = filename.contains('.')
+        ? filename.split('.').last.toLowerCase()
+        : '';
+    switch (ext) {
+      case 'png':
+        return 'image/png';
+      case 'webp':
+        return 'image/webp';
+      case 'gif':
+        return 'image/gif';
+      case 'jpg':
+      case 'jpeg':
+      default:
+        return 'image/jpeg';
+    }
+  }
+
+  Future<void> _pickAndUploadPhoto(int index) async {
+    if (index < 0 || index >= _photos.length) return;
+
+    if (defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content:
+              Text('Image picking is not supported on Windows/Linux here.')));
+      return;
+    }
+
+    setState(() => _photos[index].uploading = true);
+    try {
+      final XFile? file = await _imagePicker.pickImage(
+          source: ImageSource.gallery, imageQuality: 85);
+      if (file == null) return;
+
+      final Uint8List bytes = await file.readAsBytes();
+      final userId = context.read<AuthService>().userId;
+      if (userId == null || userId.isEmpty) {
+        throw Exception('You must be signed in to upload photos.');
+      }
+      final path = _generateStoragePath(userId, file.name);
+      await SupabaseService.storage.from(_kStorageBucket).uploadBinary(
+          path,
+          bytes,
+          fileOptions:
+              FileOptions(contentType: _guessContentType(file.name), upsert: true));
+
+      final url = SupabaseService.storage.from(_kStorageBucket).getPublicUrl(path);
+      if (!mounted) return;
+      setState(() => _photos[index].urlController.text = url);
+    } on MissingPluginException catch (e) {
+      debugPrint('Image picker plugin missing: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Image picking is not available on this platform in Dreamflow Preview.')));
+    } catch (e) {
+      debugPrint('Failed to pick/upload worksite photo: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))));
+    } finally {
+      if (mounted) setState(() => _photos[index].uploading = false);
     }
   }
 
@@ -430,7 +520,7 @@ class _WorksiteSetupScreenState extends State<WorksiteSetupScreen> {
         children: [
           _stepHeader('Step 2 of 3',
               'Site Photos',
-              'Paste image URLs. Take photos on your phone and upload to your storage, then paste the link.'),
+              'Add 1+ photos for assessment and documentation.'),
           SizedBox(height: AppSpacing.lg),
 
           ..._photos.asMap().entries.map((e) {
@@ -471,10 +561,15 @@ class _WorksiteSetupScreenState extends State<WorksiteSetupScreen> {
                     ],
                   ),
                   SizedBox(height: AppSpacing.sm),
-                  TextFormField(
-                    controller: p.urlController,
-                    keyboardType: TextInputType.url,
-                    decoration: _inputDeco('Image URL (https://…)'),
+                  _PhotoUploadBox(
+                    url: p.urlController.text.trim().isEmpty
+                        ? null
+                        : p.urlController.text.trim(),
+                    isUploading: p.uploading,
+                    onPick: () => _pickAndUploadPhoto(i),
+                    onRemove: p.urlController.text.trim().isEmpty
+                        ? null
+                        : () => setState(() => p.urlController.clear()),
                   ),
                   SizedBox(height: AppSpacing.sm),
                   TextFormField(
@@ -796,4 +891,170 @@ class _WorksiteSetupScreenState extends State<WorksiteSetupScreen> {
         ),
         child: const Text('Back'),
       );
+}
+
+class _PhotoUploadBox extends StatelessWidget {
+  final String? url;
+  final bool isUploading;
+  final VoidCallback onPick;
+  final VoidCallback? onRemove;
+
+  const _PhotoUploadBox({
+    required this.url,
+    required this.isUploading,
+    required this.onPick,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = url != null && url!.isNotEmpty;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border.all(color: Theme.of(context).dividerColor),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.md - 1),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: isUploading ? null : onPick,
+            splashFactory: NoSplash.splashFactory,
+            highlightColor: Colors.transparent,
+            child: SizedBox(
+              height: 160,
+              width: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (hasImage)
+                    Image.network(
+                      url!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, _, __) => const _Placeholder(),
+                    )
+                  else
+                    const _Placeholder(),
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _MiniPillButton(
+                          label: hasImage ? 'Change' : 'Upload',
+                          icon: hasImage
+                              ? Icons.photo_library_rounded
+                              : Icons.upload_rounded,
+                          onTap: isUploading ? null : onPick,
+                        ),
+                        if (onRemove != null) ...[
+                          const SizedBox(width: 8),
+                          _MiniPillButton(
+                            label: 'Remove',
+                            icon: Icons.delete_outline_rounded,
+                            onTap: isUploading ? null : onRemove,
+                            isDestructive: true,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (isUploading)
+                    Container(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      child: const Center(
+                        child: SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Placeholder extends StatelessWidget {
+  const _Placeholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Theme.of(context).colorScheme.surface,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.add_a_photo_outlined,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+            const SizedBox(height: 6),
+            Text('Tap to upload',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniPillButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback? onTap;
+  final bool isDestructive;
+
+  const _MiniPillButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.isDestructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = isDestructive
+        ? Theme.of(context).colorScheme.errorContainer
+        : Theme.of(context).colorScheme.primaryContainer;
+    final fg = isDestructive
+        ? Theme.of(context).colorScheme.onErrorContainer
+        : Theme.of(context).colorScheme.onPrimaryContainer;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedOpacity(
+        opacity: onTap == null ? 0.5 : 1,
+        duration: const Duration(milliseconds: 150),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: fg),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelSmall
+                      ?.copyWith(color: fg, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
