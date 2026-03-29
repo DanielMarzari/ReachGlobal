@@ -361,9 +361,10 @@ class _DisasterDashboardScreenState
             color: Theme.of(context)
                 .colorScheme
                 .onSurfaceVariant),
-        onTap: () {
-          // TODO: Navigate to worksite detail screen
-        },
+        onTap: () => context.push(
+          AppRoutes.worksiteDetail,
+          extra: {'worksiteId': w['id'] as String},
+        ),
       ),
     );
   }

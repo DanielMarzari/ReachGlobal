@@ -37,6 +37,7 @@ import 'screens/gantt_chart_page.dart';
 import 'screens/response_setup_screen.dart';
 import 'screens/disaster_dashboard_screen.dart';
 import 'screens/worksite_setup_screen.dart';
+import 'screens/worksite_detail_screen.dart';
 
 // ── Route constants ───────────────────────────────────────────────────────────
 class AppRoutes {
@@ -71,6 +72,7 @@ class AppRoutes {
   static const String responseSetup      = '/staff/response-setup';
   static const String disasterDashboard  = '/staff/disaster';
   static const String worksiteSetup      = '/staff/worksite-setup';
+  static const String worksiteDetail     = '/staff/worksite';
   // Shared
   static const String ganttChart         = '/gantt';
 }
@@ -334,6 +336,18 @@ class AppRouter {
           child: WorksiteSetupScreen(
             disasterId:   extra['disasterId']   as String? ?? '',
             disasterName: extra['disasterName'] as String? ?? 'Response',
+          ),
+        );
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.worksiteDetail,
+      name: 'worksiteDetail',
+      pageBuilder: (c, s) {
+        final extra = s.extra as Map<String, dynamic>? ?? {};
+        return MaterialPage(
+          child: WorksiteDetailScreen(
+            worksiteId: extra['worksiteId'] as String? ?? '',
           ),
         );
       },
