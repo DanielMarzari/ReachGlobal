@@ -7,6 +7,7 @@ import 'services/auth_service.dart';
 // Public
 import 'screens/public_home_screen.dart';
 import 'screens/disaster_event_overview_screen.dart';
+import 'screens/responses_map_screen.dart';
 import 'screens/project_detail_public_screen.dart';
 import 'screens/donation_flow_screen.dart';
 import 'screens/volunteer_registration_screen.dart';
@@ -44,6 +45,7 @@ class AppRoutes {
   // Public
   static const String home               = '/';
   static const String eventOverview      = '/event';
+  static const String responsesMap      = '/responses-map';
   static const String projectDetailPublic= '/project-public';
   static const String donationFlow       = '/donate';
   static const String volunteerRegister  = '/volunteer-register';
@@ -99,6 +101,7 @@ class AppRouter {
     const publicPaths = {
       AppRoutes.home,
       AppRoutes.eventOverview,
+      AppRoutes.responsesMap,
       AppRoutes.projectDetailPublic,
       AppRoutes.donationFlow,
       AppRoutes.volunteerRegister,
@@ -168,10 +171,20 @@ class AppRouter {
           const MaterialPage(child: DisasterEventOverviewScreen()),
     ),
     GoRoute(
+      path: AppRoutes.responsesMap,
+      name: 'responsesMap',
+      pageBuilder: (c, s) {
+        final disasters = (s.extra as List<Map<String, dynamic>>?) ?? const <Map<String, dynamic>>[];
+        return MaterialPage(child: ResponsesMapScreen(disasters: disasters));
+      },
+    ),
+    GoRoute(
       path: AppRoutes.projectDetailPublic,
       name: 'projectDetailPublic',
-      pageBuilder: (c, s) =>
-          const MaterialPage(child: ProjectDetailPublicScreen()),
+      pageBuilder: (c, s) {
+        final extra = s.extra as Map<String, dynamic>?;
+        return MaterialPage(child: ProjectDetailPublicScreen(disaster: extra));
+      },
     ),
     GoRoute(
       path: AppRoutes.donationFlow,

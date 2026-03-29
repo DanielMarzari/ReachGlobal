@@ -283,7 +283,7 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
     try {
       final data = await SupabaseService.client
           .from('disasters')
-          .select('id, name, type, location_name, status, description, image_url, start_date')
+          .select('id, name, type, location_name, status, description, image_url, start_date, lat, lng')
           .eq('public_visible', true)
           .eq('status', 'active')
           .order('start_date', ascending: false);
@@ -312,11 +312,10 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Lighthouse",
-                            style: context.textStyles.headlineMedium?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: Theme.of(context).colorScheme.primary,
-                              height: 1,
+                            'Lighthouse',
+                            style: context.textStyles.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -443,7 +442,7 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
                                     ),
                                   ),
                                   GestureDetector(
-                                    onTap: () => context.push(AppRoutes.eventOverview),
+                                    onTap: () => context.push(AppRoutes.responsesMap, extra: _disasters),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [

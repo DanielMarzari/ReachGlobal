@@ -7,6 +7,8 @@ environment:
   sdk: ^3.6.0
 
 dependencies:
+  latlong2: 0.9.1
+  flutter_map: ^8.0.0
   image_picker_for_web: ^3.0.0
   fl_chart: 0.68.0
   flutter:

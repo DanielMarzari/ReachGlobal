@@ -213,10 +213,21 @@ class VolunteerSlot extends StatelessWidget {
 }
 
 class ProjectDetailPublicScreen extends StatelessWidget {
-  const ProjectDetailPublicScreen({super.key});
+  const ProjectDetailPublicScreen({super.key, this.disaster});
+
+  /// Optional disaster/response payload passed via `GoRouterState.extra`.
+  /// Expected keys: id, name, location_name, type, image_url.
+  final Map<String, dynamic>? disaster;
 
   @override
   Widget build(BuildContext context) {
+    final name = (disaster?['name'] as String?) ?? 'Project Details';
+    final locationName = (disaster?['location_name'] as String?) ?? 'Unknown location';
+    final type = (disaster?['type'] as String?) ?? '';
+    final imageUrl = (disaster?['image_url'] as String?);
+
+    final headerSubtitle = type.isNotEmpty ? '$locationName • $type' : locationName;
+
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
@@ -262,6 +273,10 @@ class ProjectDetailPublicScreen extends StatelessWidget {
                     "assets/images/hurricane_damaged_house_roof_repair_gray_1774661715888.jpg",
                     fit: BoxFit.cover,
                   ),
+                  if (imageUrl != null)
+                    Positioned.fill(
+                      child: Image.network(imageUrl, fit: BoxFit.cover),
+                    ),
                   Positioned(
                     left: 0,
                     right: 0,
@@ -288,7 +303,7 @@ class ProjectDetailPublicScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: AppSpacing.sm),
                           Text(
-                            "124 Riverside Drive",
+                            name,
                             style: context.textStyles.headlineMedium?.bold.copyWith(color: Colors.white),
                           ),
                           const SizedBox(height: AppSpacing.sm),
@@ -297,7 +312,7 @@ class ProjectDetailPublicScreen extends StatelessWidget {
                               const Icon(Icons.location_on, color: Colors.white, size: 16),
                               const SizedBox(width: AppSpacing.sm),
                               Text(
-                                "Fort Myers, FL • Hurricane Ian Relief",
+                                headerSubtitle,
                                 style: context.textStyles.bodySmall?.copyWith(color: Colors.white),
                               ),
                             ],

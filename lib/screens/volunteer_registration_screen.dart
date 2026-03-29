@@ -128,6 +128,7 @@ class _VolunteerRegistrationScreenState extends State<VolunteerRegistrationScree
 
   @override
   Widget build(BuildContext context) {
+    final router = GoRouter.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -138,7 +139,13 @@ class _VolunteerRegistrationScreenState extends State<VolunteerRegistrationScree
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (router.canPop()) {
+              context.pop();
+            } else {
+              context.go(AppRoutes.home);
+            }
+          },
         ),
       ),
       body: SingleChildScrollView(

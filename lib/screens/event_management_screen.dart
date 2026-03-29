@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:math';
+import 'dart:typed_data';
 import '../theme.dart';
 import '../nav.dart';
 import '../services/auth_service.dart';
@@ -27,6 +33,10 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
       TextEditingController();
   final TextEditingController _imageUrlController =
       TextEditingController();
+
+  Uint8List? _coverImageBytes;
+  String? _coverImageUrl;
+  bool _isUploadingCover = false;
 
   String _selectedDisasterType = 'tornado';
   DateTime? _selectedStartDate;
@@ -56,6 +66,85 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
     _descriptionController.dispose();
     _imageUrlController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickAndUploadCoverImage() async {
+    if (_isUploadingCover) return;
+
+    setState(() => _isUploadingCover = true);
+    try {
+      final userId = context.read<AuthService>().userId;
+      if (userId == null || userId.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please sign in to upload images.')),
+          );
+        }
+        return;
+      }
+
+      final picker = ImagePicker();
+      final XFile? file = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 2400,
+      );
+      if (file == null) return;
+
+      final bytes = await file.readAsBytes();
+      final parts = file.name.split('.');
+      final ext = (parts.length > 1 ? parts.last : 'jpg').toLowerCase();
+      final safeExt = (ext == 'png' || ext == 'webp' || ext == 'jpeg' || ext == 'jpg') ? ext : 'jpg';
+      final contentType = switch (safeExt) {
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'jpeg' => 'image/jpeg',
+        'jpg' => 'image/jpeg',
+        _ => 'image/jpeg',
+      };
+
+      final rand = Random().nextInt(1 << 32);
+      final path = 'responses/$userId/${DateTime.now().millisecondsSinceEpoch}-$rand.$safeExt';
+
+      await SupabaseService.storage.from('project-photos').uploadBinary(
+        path,
+        bytes,
+        fileOptions: FileOptions(upsert: true, contentType: contentType),
+      );
+
+      final publicUrl = SupabaseService.storage.from('project-photos').getPublicUrl(path);
+
+      if (!mounted) return;
+      setState(() {
+        _coverImageBytes = bytes;
+        _coverImageUrl = publicUrl;
+        _imageUrlController.text = publicUrl;
+      });
+    } on MissingPluginException catch (e) {
+      debugPrint('Image picker plugin missing: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Image picking is not available on this platform.')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Failed to pick/upload cover image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingCover = false);
+    }
+  }
+
+  void _removeCoverImage() {
+    setState(() {
+      _coverImageBytes = null;
+      _coverImageUrl = null;
+      _imageUrlController.clear();
+    });
   }
 
   String _getDisasterLabel(String type) {
@@ -94,7 +183,7 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
     setState(() => _isSaving = true);
     try {
       final userId = context.read<AuthService>().userId;
-      final imageUrl = _imageUrlController.text.trim();
+      final imageUrl = (_coverImageUrl ?? _imageUrlController.text).trim();
       await SupabaseService.client.from('disasters').insert({
         'name': _eventNameController.text.trim(),
         'type': _selectedDisasterType,
@@ -327,24 +416,14 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
               SizedBox(height: AppSpacing.lg),
 
               // ── Cover Image URL (optional) ───────────────────────────
-              Text('Cover Image URL (optional)',
+              Text('Cover Image (optional)',
                   style: context.textStyles.labelSmall?.bold),
               SizedBox(height: AppSpacing.sm),
-              TextFormField(
-                controller: _imageUrlController,
-                keyboardType: TextInputType.url,
-                decoration: InputDecoration(
-                  hintText: 'https://…',
-                  border: OutlineInputBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppRadius.md)),
-                  contentPadding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.sm),
-                  suffixIcon: const Icon(
-                      Icons.link_rounded,
-                      size: 20),
-                ),
+              _CreateResponseCoverUploadBox(
+                bytes: _coverImageBytes,
+                isUploading: _isUploadingCover,
+                onPick: _pickAndUploadCoverImage,
+                onRemove: _coverImageUrl == null ? null : _removeCoverImage,
               ),
               SizedBox(height: AppSpacing.xs),
               Text(
@@ -378,6 +457,181 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
                               color: Colors.white),
                         )
                       : const Text('Create Response'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CreateResponseCoverUploadBox extends StatefulWidget {
+  const _CreateResponseCoverUploadBox({
+    required this.bytes,
+    required this.isUploading,
+    required this.onPick,
+    required this.onRemove,
+  });
+
+  final Uint8List? bytes;
+  final bool isUploading;
+  final VoidCallback onPick;
+  final VoidCallback? onRemove;
+
+  @override
+  State<_CreateResponseCoverUploadBox> createState() =>
+      _CreateResponseCoverUploadBoxState();
+}
+
+class _CreateResponseCoverUploadBoxState
+    extends State<_CreateResponseCoverUploadBox> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final hasImage = widget.bytes != null;
+    final borderColor = _hovered ? cs.primary : Theme.of(context).dividerColor;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.isUploading ? null : widget.onPick,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          height: 180,
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: borderColor),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: hasImage
+                    ? Image.memory(widget.bytes!, fit: BoxFit.cover)
+                    : Container(
+                        alignment: Alignment.center,
+                        padding: EdgeInsets.all(AppSpacing.md),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.add_photo_alternate_rounded,
+                                color: cs.primary, size: 32),
+                            SizedBox(height: AppSpacing.sm),
+                            Text(
+                              'Upload cover image',
+                              style: context.textStyles.bodyMedium?.copyWith(
+                                color: cs.onSurface,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: AppSpacing.xs),
+                            Text(
+                              'PNG or JPG recommended',
+                              textAlign: TextAlign.center,
+                              style: context.textStyles.bodySmall?.copyWith(
+                                color: cs.onSurface.withValues(alpha: 0.65),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+              ),
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: 12,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _CoverMiniButton(
+                        label: hasImage ? 'Change' : 'Choose photo',
+                        icon: Icons.upload_rounded,
+                        onPressed: widget.isUploading ? null : widget.onPick,
+                      ),
+                    ),
+                    if (widget.onRemove != null) ...[
+                      SizedBox(width: AppSpacing.sm),
+                      _CoverMiniButton(
+                        label: 'Remove',
+                        icon: Icons.delete_outline_rounded,
+                        destructive: true,
+                        onPressed: widget.isUploading ? null : widget.onRemove,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (widget.isUploading)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    alignment: Alignment.center,
+                    child: const SizedBox(
+                      height: 28,
+                      width: 28,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CoverMiniButton extends StatelessWidget {
+  const _CoverMiniButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.destructive = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final bg = destructive ? cs.errorContainer : cs.primaryContainer;
+    final fg = destructive ? cs.onErrorContainer : cs.onPrimaryContainer;
+
+    return GestureDetector(
+      onTap: onPressed,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 140),
+        opacity: onPressed == null ? 0.55 : 1,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: fg, size: 18),
+              SizedBox(width: AppSpacing.xs),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.textStyles.labelMedium
+                      ?.copyWith(color: fg, fontWeight: FontWeight.w700),
                 ),
               ),
             ],
